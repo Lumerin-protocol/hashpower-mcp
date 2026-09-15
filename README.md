@@ -2,7 +2,7 @@
 
 Knowledge base and simulator for agents building Hashpower trading bots. **Not a trading API.** This server never holds keys, never broadcasts transactions, and is never in the production trade path.
 
-The permissionless API is the contracts on Base plus the public subgraphs. This MCP server teaches an agent those rules, lets it read live data, and lets it simulate — then the agent writes its own bot against [`@hashpower/*-abi`](https://www.npmjs.com/org/hashpower).
+The permissionless API is the contracts on Base plus the public subgraphs. This MCP server teaches an agent those rules, lets it scan the same live market a human reads on the trading UI, and lets it simulate — then the agent writes its own bot against [`@hashpower/*-abi`](https://www.npmjs.com/org/hashpower). Execution never goes through this server.
 
 ## Connect
 
@@ -59,12 +59,19 @@ Prerequisite for any real trade: the bot wallet holds Base ETH (gas) and USDC (c
 - `get_margin_model`
 - `get_units_and_scaling`
 
-**Read** — `eth_call` + subgraphs, no keys:
+**Read** — `eth_call` + subgraphs, no keys. Same surfaces a human scans on the trading UI. `wallet` is always a **parameter**, never session state.
 
-- `get_hashprice`
-- `get_orderbook`
-- `get_positions` (`wallet` is a **parameter**, not session state)
-- `get_margin_status`
+- `get_market_snapshot` — one-shot scan (hashprice, books with size, tape, funding, expiries, stats, 24h candles)
+- `get_hashprice` — on-chain `latestRoundData()` plus scaled decimal
+- `get_orderbook` — prices **and** sizes (`getQuantityAtPrice`) plus subgraph `orderCount`
+- `get_trades` — public tape (optional wallet filter)
+- `get_funding` — perps funding strip (optional wallet `getPendingFunding`)
+- `get_expirations` — futures market-selector dates + settlement
+- `get_market_stats` — venue singleton + `getMarketPrice`
+- `get_oracle_history` — hashprice / BTC-USD / network hashrate ticks or candles
+- `get_positions` / `get_margin_status`
+
+Form a strategy from that plus the operator's goals, then `simulate_order` / `check_can_place_order`. **Execute separately** by encoding `@hashpower/*-abi` from your own wallet.
 
 **Simulate**
 

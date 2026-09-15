@@ -2,6 +2,8 @@ export interface GraphMeta {
   blockNumber: number | null;
 }
 
+export const META_BLOCK = `_meta { block { number } }`;
+
 export async function graphql<T>(
   url: string,
   query: string,

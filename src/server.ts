@@ -9,25 +9,38 @@ import {
   getMarketRulesTool,
   getUnitsAndScalingTool,
 } from "./tools/knowledge.ts";
+import {
+  getExpirations,
+  getFunding,
+  getMarketSnapshot,
+  getMarketStats,
+  getOracleHistory,
+  getTrades,
+} from "./tools/market.ts";
 import { getHashprice, getMarginStatus, getOrderbook, getPositions } from "./tools/read.ts";
 import { fail } from "./tools/result.ts";
 import { buildDepositTx, buildOrderTx } from "./tools/scaffold.ts";
 import { checkCanPlaceOrder, simulateOrder } from "./tools/simulate.ts";
+import { MCP_VERSION } from "./version.ts";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
-const INSTRUCTIONS = `You are connected to the Hashpower MCP server — a knowledge base and simulator, NOT a trading intermediary.
+const INSTRUCTIONS = `You are connected to the Hashpower MCP server — a knowledge base, live market scanner, and simulator. It is NOT a trading API and never holds keys.
 
-Hashpower is a permissionless marketplace for Bitcoin hashprice risk on Base. There is no trading API and no API keys. The contracts and subgraphs ARE the API.
+Hashpower is a permissionless marketplace for Bitcoin hashprice risk on Base. The contracts and subgraphs ARE the API.
+
+How to work:
+1. Scan the market the way a human scans the trading UI. Start with get_market_snapshot, or compose get_hashprice, get_orderbook (price + size + orderCount), get_trades, get_funding, get_expirations, get_market_stats, and get_oracle_history.
+2. Read the operator's goals together with get_market_rules / get_margin_model / get_units_and_scaling.
+3. Form a strategy. Validate with simulate_order and check_can_place_order (and get_margin_status / get_positions when a wallet is in play).
+4. Execute separately: import @hashpower/*-abi, encode calldata, sign and broadcast from the operator's wallet. Never ask this server to send a transaction.
 
 Hard rules:
-- Never ask this server to sign or broadcast a transaction. The agent (or its operator) holds the wallet.
-- Production trading bots must import @hashpower/*-abi, encode calldata, and send from their own wallet.
-- Scaffold tools (build_*_tx) are prototypes only. Always simulate_order and check_can_place_order first.
-- Prerequisite: the wallet needs Base ETH for gas and USDC for collateral.
-- Deposit to CollateralVault before trading. Collateral is unified across futures and perps.
-- Read live hashprice via latestRoundData(); history/books/positions via subgraphs (they can lag).
-- Start with get_deployments and get_market_rules, then get_units_and_scaling / get_margin_model.`;
+- Wallet addresses are tool parameters. This server has no session and no stickiness.
+- Prerequisite: Base ETH for gas and USDC for collateral. Deposit to CollateralVault before trading. Collateral is unified across futures and perps.
+- Subgraphs can lag; every market read reports chainHead vs subgraphHead.
+- Scaffold tools (build_*_tx) are prototypes only. Production bots encode via the npm packages.
+- Start with get_deployments if you need addresses, subgraph URLs, or ABI package versions.`;
 
 async function run(fn: () => Promise<ToolResult> | ToolResult): Promise<ToolResult> {
   try {
@@ -44,7 +57,7 @@ export function createServer(
 ): McpServer {
   const server = new McpServer({
     name: "hashpower",
-    version: "0.1.0",
+    version: MCP_VERSION,
     description: INSTRUCTIONS,
   });
 
@@ -93,10 +106,30 @@ export function createServer(
   );
 
   server.registerTool(
+    "get_market_snapshot",
+    {
+      title: "Scan the market (UI equivalent)",
+      description:
+        "One-shot scan of the surfaces a human reads on the trading UI: live hashprice, perps book+tape+funding, futures expiries+nearest book+tape, venue stats, and 24h hashprice candles. Use this to form a strategy; execute trades separately via the ABI packages.",
+      inputSchema: {
+        maxLevels: z.number().int().min(1).max(50).default(10).describe("Book depth per side"),
+        trades: z.number().int().min(1).max(100).default(20).describe("Recent tape prints per venue"),
+        expirationAt: z
+          .string()
+          .optional()
+          .describe("Futures expiry unix seconds to include; defaults to the nearest tradable expiry"),
+      },
+    },
+    async ({ maxLevels, trades, expirationAt }) =>
+      run(() => getMarketSnapshot(client, deployments, { maxLevels, trades, expirationAt })),
+  );
+
+  server.registerTool(
     "get_hashprice",
     {
       title: "Get hashprice",
-      description: "Read the on-chain hashprice oracle via AggregatorV3 latestRoundData().",
+      description:
+        "On-chain hashprice via AggregatorV3 latestRoundData(), plus a scaled decimal string. USD also includes the latest oracles-subgraph tick the UI chart uses.",
       inputSchema: {
         pair: z.enum(["usd", "btc"]).default("usd").describe("HashpriceUSD (trading) or HashpriceBTC"),
       },
@@ -109,7 +142,7 @@ export function createServer(
     {
       title: "Get order book",
       description:
-        "On-chain CLOB prices. For futures, expirationAt (unix seconds) is required. Perps is a single perpetual book.",
+        "Full CLOB depth: on-chain prices + getQuantityAtPrice sizes, merged with subgraph PriceLevel orderCount (same entities as the UI book). Bids are best-first (highest); asks are best-first (lowest). Futures requires expirationAt.",
       inputSchema: {
         venue: z.enum(["futures", "perps"]),
         maxLevels: z.number().int().min(1).max(50).default(10),
@@ -121,11 +154,80 @@ export function createServer(
   );
 
   server.registerTool(
+    "get_trades",
+    {
+      title: "Get recent trades",
+      description:
+        "Public tape from the Trade subgraph entity the UI Recent Trades tab uses. Optional wallet filters to that account. Signed quantity: positive = buy, negative = sell.",
+      inputSchema: {
+        venue: z.enum(["futures", "perps"]),
+        first: z.number().int().min(1).max(100).default(25),
+        wallet: z.string().optional().describe("Optional 0x-prefixed EOA to filter fills"),
+      },
+    },
+    async ({ venue, first, wallet }) => run(() => getTrades(deployments, venue, first, wallet)),
+  );
+
+  server.registerTool(
+    "get_funding",
+    {
+      title: "Get perps funding",
+      description:
+        "Perps funding singleton + recent FundingUpdate events (UI funding strip). Optional wallet adds on-chain getPendingFunding and subgraph settlements.",
+      inputSchema: {
+        first: z.number().int().min(1).max(50).default(10).describe("FundingUpdate rows, newest first"),
+        wallet: z.string().optional().describe("Optional 0x-prefixed EOA"),
+      },
+    },
+    async ({ first, wallet }) => run(() => getFunding(client, deployments, first, wallet)),
+  );
+
+  server.registerTool(
+    "get_expirations",
+    {
+      title: "Get futures expirations",
+      description:
+        "On-chain getExpirationDates (the UI market selector) with tradable vs expired split, plus subgraph settlement prices.",
+    },
+    async () => run(() => getExpirations(client, deployments)),
+  );
+
+  server.registerTool(
+    "get_market_stats",
+    {
+      title: "Get market stats",
+      description:
+        "Venue singleton (fees, ticks, volume, open orders) plus on-chain getMarketPrice. Same stats strip the UI reads from perps(id:0) / futures(id:0).",
+      inputSchema: {
+        venue: z.enum(["futures", "perps", "both"]).default("both"),
+      },
+    },
+    async ({ venue }) => run(() => getMarketStats(client, deployments, venue)),
+  );
+
+  server.registerTool(
+    "get_oracle_history",
+    {
+      title: "Get oracle history",
+      description:
+        "Oracle subgraph history the UI charts: hashprice USD/BTC, BTC/USD, network hashrate. interval=tick for raw samples; hour/day for Goldsky candles (current bucket included).",
+      inputSchema: {
+        series: z
+          .enum(["hashpriceUsd", "hashpriceBtc", "btcUsd", "networkHashrate1d", "networkHashrate7d"])
+          .default("hashpriceUsd"),
+        interval: z.enum(["tick", "hour", "day"]).default("hour"),
+        first: z.number().int().min(1).max(200).default(48),
+      },
+    },
+    async ({ series, interval, first }) => run(() => getOracleHistory(deployments, series, interval, first)),
+  );
+
+  server.registerTool(
     "get_positions",
     {
       title: "Get positions and open orders",
       description:
-        "Open positions and resting orders for a wallet from the public subgraphs. Wallet is a parameter — this server has no session.",
+        "Open positions and resting orders for a wallet from the public subgraphs (same PositionSession/Order entities as the UI). Wallet is a parameter — this server has no session.",
       inputSchema: {
         wallet: z.string().describe("0x-prefixed EOA"),
         venue: z.enum(["futures", "perps", "both"]).default("both"),

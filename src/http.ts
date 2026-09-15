@@ -5,6 +5,7 @@ import type { AppConfig } from "./config.ts";
 import type { ChainClient } from "./chain.ts";
 import type { DeploymentsManifest } from "./deployments.ts";
 import { createServer } from "./server.ts";
+import { MCP_VERSION } from "./version.ts";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +96,7 @@ async function handle(
     sendJson(res, 200, {
       ok: true,
       name: "hashpower-mcp",
+      version: MCP_VERSION,
       env: config.env,
       network: deployments.environment.network,
       docsUrl: config.docsUrl,
