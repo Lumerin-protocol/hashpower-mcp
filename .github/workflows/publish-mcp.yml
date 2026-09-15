@@ -1,12 +1,12 @@
 name: Publish @hashpower/mcp
 
-# Publishes the MCP server to npm when the package surface changes on `dev`.
-# Version of record lives on npm (dev is protected — CI never commits a bump).
-# Each publish is tagged mcp-vX.Y.Z on the source commit.
+# Publishes the MCP server to npm when the package surface changes on
+# `dev` or `main`. Version of record lives on npm (protected branches —
+# CI never commits a bump). Each publish is tagged mcp-vX.Y.Z.
 #
 # Pre-1.0: automatic bumps are patch. Use workflow_dispatch `version` for a
-# minor/major when you intentionally break tools. At GA, change the branch
-# filter (and the npm-publish environment's deployment-branch rule) to `main`.
+# minor/major when you intentionally break tools. `dev` and `main` both
+# publish so promoting to production does not need a workflow edit.
 #
 # Auth is npm Trusted Publishing (OIDC) — no NPM_TOKEN.
 # First release: either this workflow (after adding the Trusted Publisher on
@@ -16,8 +16,8 @@ name: Publish @hashpower/mcp
 on:
   push:
     branches:
-      # Publishing off `dev` until GA. Flip to `main` with the ABI packages.
       - dev
+      - main
     paths:
       - "src/**"
       - "package.json"

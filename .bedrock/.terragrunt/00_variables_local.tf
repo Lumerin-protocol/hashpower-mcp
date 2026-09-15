@@ -1,7 +1,20 @@
 locals {
   shortname = "hashpower-mcp"
 
+  # Name-only form (older repos). New repos default to immutable subjects
+  # (`org@id/repo@id`) — see github_org_repo_oidc. Trust both so toggling
+  # GitHub's "use_immutable_subject" does not break AssumeRoleWithWebIdentity.
   github_org_repo = "Lumerin-protocol/hashpower-mcp"
+
+  # From GET /repos/Lumerin-protocol/hashpower-mcp/actions/oidc/customization/sub
+  #   use_immutable_subject=true
+  #   sub_claim_prefix=repo:Lumerin-protocol@92322520/hashpower-mcp@1370174274
+  github_org_repo_oidc = "Lumerin-protocol@92322520/hashpower-mcp@1370174274"
+
+  github_org_repo_trust = [
+    local.github_org_repo_oidc,
+    local.github_org_repo,
+  ]
 
   github_oidc_sub_claims = var.account_lifecycle == "dev" ? [
     "ref:refs/heads/dev",
