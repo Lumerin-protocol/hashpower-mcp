@@ -29,9 +29,11 @@ describe("stateless streamable HTTP", () => {
     try {
       const health = await fetch(`${origin}/health`);
       assert.equal(health.status, 200);
-      const body = (await health.json()) as { ok: boolean; mcp: string };
+      const body = (await health.json()) as { ok: boolean; mcp: string; version: string };
       assert.equal(body.ok, true);
       assert.equal(body.mcp, "/mcp");
+      assert.equal(typeof body.version, "string");
+      assert.ok(body.version.length > 0);
 
       const init = await rpc(`${origin}/mcp`, "initialize", {
         protocolVersion: "2025-03-26",
@@ -51,6 +53,13 @@ describe("stateless streamable HTTP", () => {
       const names = new Set(result.tools.map((t) => t.name));
       assert.ok(names.has("get_deployments"));
       assert.ok(names.has("get_hashprice"));
+      assert.ok(names.has("get_market_snapshot"));
+      assert.ok(names.has("get_orderbook"));
+      assert.ok(names.has("get_trades"));
+      assert.ok(names.has("get_funding"));
+      assert.ok(names.has("get_expirations"));
+      assert.ok(names.has("get_market_stats"));
+      assert.ok(names.has("get_oracle_history"));
       assert.ok(names.has("simulate_order"));
       assert.ok(names.has("build_order_tx"));
     } finally {
