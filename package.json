@@ -28,7 +28,7 @@
     "hashprice"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"import { chmodSync } from 'node:fs'; chmodSync('dist/index.js', 0o755);\"",
     "prepare": "pnpm build",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
