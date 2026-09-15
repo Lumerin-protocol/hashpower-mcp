@@ -3,3 +3,13 @@ dist/
 .env
 .env.local
 .DS_Store
+
+# Terraform / Terragrunt
+.terraform
+.terraform.lock.hcl
+.terragrunt-cache
+*.out
+*.plan
+secret.tfvars
+secret.*
+!secret.auto.tfvars.example

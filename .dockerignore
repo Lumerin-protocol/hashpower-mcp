@@ -1,0 +1,10 @@
+node_modules
+.git
+.github
+.bedrock
+tests
+*.md
+.env
+.env.*
+.DS_Store
+dist

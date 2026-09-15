@@ -4,7 +4,23 @@ Knowledge base and simulator for agents building Hashpower trading bots. **Not a
 
 The permissionless API is the contracts on Base plus the public subgraphs. This MCP server teaches an agent those rules, lets it read live data, and lets it simulate — then the agent writes its own bot against [`@hashpower/*-abi`](https://www.npmjs.com/org/hashpower).
 
-## Quick start (Cursor / Claude Desktop)
+## Connect
+
+**Hosted (Streamable HTTP, this environment's URL):**
+
+```json
+{
+  "mcpServers": {
+    "hashpower": {
+      "url": "https://mcp.dev.hashpower.io/mcp"
+    }
+  }
+}
+```
+
+On `main` that hostname is `https://mcp.hashpower.io/mcp`. Same image, `HASHPOWER_ENV` flipped by the deploy workflow.
+
+**Local stdio** (agent brings its own RPC):
 
 ```json
 {
@@ -20,6 +36,8 @@ The permissionless API is the contracts on Base plus the public subgraphs. This 
 }
 ```
 
+Until the first npm publish, `npx -y github:Lumerin-protocol/hashpower-mcp#dev` works the same way.
+
 Optional env:
 
 | Variable | Default (testnet) | Meaning |
@@ -27,6 +45,8 @@ Optional env:
 | `HASHPOWER_ENV` | `testnet` | `testnet` (Base Sepolia) or `mainnet` |
 | `HASHPOWER_RPC_URL` | `https://sepolia.base.org` | Ethereum JSON-RPC |
 | `HASHPOWER_DOCS_URL` | `https://dev.hashpower.io` | Semantics source (`/semantics/*`) |
+| `HASHPOWER_TRANSPORT` | `stdio` | `stdio` or `http` |
+| `PORT` | `8080` | HTTP bind port |
 
 Prerequisite for any real trade: the bot wallet holds Base ETH (gas) and USDC (collateral). Deposit to `CollateralVault` first.
 
@@ -63,9 +83,10 @@ pnpm check
 pnpm test
 pnpm build
 pnpm start
+HASHPOWER_TRANSPORT=http pnpm start:http
 ```
 
-Hosted Streamable HTTP (`mcp.hashpower.io` on Fargate) is the next slice. This package is stdio-first so agents can run it beside themselves with zero Hashpower hosting.
+Hosted HTTP is stateless: no MCP session, no ALB stickiness. Any Fargate task can serve any request.
 
 ## What this is not
 

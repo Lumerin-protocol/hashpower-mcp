@@ -1,0 +1,88 @@
+name: Bump ABI packages
+
+# Fired by the four @hashpower/*-abi publish workflows (repository_dispatch
+# abi-published). Opens a PR on the same branch the ABI came from (`dev` or
+# `main`) so hosted MCP and npx pick up new addresses/ABIs without anyone
+# remembering. Does not push to protected branches.
+#
+# PAT: HASHPOWER_MCP_DISPATCH_TOKEN (Contents + Pull requests on this repo).
+# Can be the same fine-grained PAT as HASHPOWER_IO_DISPATCH_TOKEN if that
+# token's repo allow-list includes hashpower-mcp.
+
+on:
+  repository_dispatch:
+    types: [abi-published]
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Branch to bump (dev or main)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve branch
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            REF="${{ github.event.client_payload.source_ref }}"
+            PKG="${{ github.event.client_payload.package }}"
+            VER="${{ github.event.client_payload.version }}"
+            echo "📦 abi-published: ${PKG}@${VER} from ${REF}"
+          else
+            REF="${{ github.event.inputs.source_ref }}"
+            PKG="manual"
+            VER=""
+          fi
+          case "$REF" in
+            main|dev) ;;
+            *) echo "::error::Refusing to bump unexpected branch '$REF'"; exit 1 ;;
+          esac
+          echo "branch=$REF" >> "$GITHUB_OUTPUT"
+          echo "package=$PKG" >> "$GITHUB_OUTPUT"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.ref.outputs.branch }}
+          token: ${{ secrets.HASHPOWER_MCP_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Update ABI packages
+        run: |
+          pnpm update \
+            @hashpower/oracle-abi \
+            @hashpower/collateral-abi \
+            @hashpower/futures-abi \
+            @hashpower/perps-abi \
+            --latest
+          pnpm check && pnpm test
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.HASHPOWER_MCP_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump @hashpower/*-abi (${{ steps.ref.outputs.package }}@${{ steps.ref.outputs.version }})"
+          branch: chore/abi-bump-${{ steps.ref.outputs.branch }}
+          delete-branch: true
+          title: "chore: bump ABI packages (${{ steps.ref.outputs.branch }})"
+          body: |
+            Automatic follow-up after `${{ steps.ref.outputs.package }}@${{ steps.ref.outputs.version }}`.
+
+            Source branch: `${{ steps.ref.outputs.branch }}` (dev → testnet MCP, main → mainnet MCP).
+          labels: dependencies

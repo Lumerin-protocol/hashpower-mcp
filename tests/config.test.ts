@@ -8,6 +8,8 @@ describe("loadConfig", () => {
     assert.equal(cfg.env, "testnet");
     assert.equal(cfg.rpcUrl, "https://sepolia.base.org");
     assert.equal(cfg.docsUrl, "https://dev.hashpower.io");
+    assert.equal(cfg.transport, "stdio");
+    assert.equal(cfg.port, 8080);
   });
 
   it("maps mainnet defaults", () => {
@@ -15,6 +17,12 @@ describe("loadConfig", () => {
     assert.equal(cfg.env, "mainnet");
     assert.equal(cfg.rpcUrl, "https://mainnet.base.org");
     assert.equal(cfg.docsUrl, "https://hashpower.io");
+  });
+
+  it("enables streamable HTTP when HASHPOWER_TRANSPORT=http", () => {
+    const cfg = loadConfig({ HASHPOWER_TRANSPORT: "http", PORT: "0" });
+    assert.equal(cfg.transport, "http");
+    assert.equal(cfg.port, 0);
   });
 
   it("strips trailing slash on docs URL", () => {

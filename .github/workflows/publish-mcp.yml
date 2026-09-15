@@ -1,0 +1,124 @@
+name: Publish @hashpower/mcp
+
+# Publishes the MCP server to npm when the package surface changes on `dev`.
+# Version of record lives on npm (dev is protected — CI never commits a bump).
+# Each publish is tagged mcp-vX.Y.Z on the source commit.
+#
+# Pre-1.0: automatic bumps are patch. Use workflow_dispatch `version` for a
+# minor/major when you intentionally break tools. At GA, change the branch
+# filter (and the npm-publish environment's deployment-branch rule) to `main`.
+#
+# Auth is npm Trusted Publishing (OIDC) — no NPM_TOKEN.
+# First release: either this workflow (after adding the Trusted Publisher on
+# npmjs.com for this repo + workflow + environment) or a one-time local
+# `pnpm build && npm publish --access public` with the hardware key.
+
+on:
+  push:
+    branches:
+      # Publishing off `dev` until GA. Flip to `main` with the ABI packages.
+      - dev
+    paths:
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - ".github/workflows/publish-mcp.yml"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Exact version to publish (skips the automatic patch bump)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: publish-mcp
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: 📦 Build & publish to npm
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint && pnpm check && pnpm test && pnpm build
+
+      - name: Compute version
+        id: bump
+        env:
+          FORCED_VERSION: ${{ inputs.version || '' }}
+        run: |
+          set -euo pipefail
+          PKG=$(node -p "require('./package.json').name")
+
+          if [ -n "$FORCED_VERSION" ]; then
+            npm version "$FORCED_VERSION" --no-git-tag-version --allow-same-version
+            echo "level=forced" >> "$GITHUB_OUTPUT"
+            echo "version=$FORCED_VERSION" >> "$GITHUB_OUTPUT"
+            echo "Forced version: $FORCED_VERSION"
+            exit 0
+          fi
+
+          PUBLISHED=$(npm view "$PKG" version 2>/dev/null || echo "none")
+          if [ "$PUBLISHED" = "none" ]; then
+            VERSION=$(node -p "require('./package.json').version")
+            echo "First publish — using $VERSION from package.json"
+            echo "level=first" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          npm version "$PUBLISHED" --no-git-tag-version --allow-same-version
+          npm version patch --no-git-tag-version
+          NEW=$(node -p "require('./package.json').version")
+          echo "level=patch" >> "$GITHUB_OUTPUT"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Version: $NEW (patch bump from $PUBLISHED)"
+
+      - name: Publish
+        run: npm publish --access public --provenance --tag latest
+
+      - name: Tag release
+        continue-on-error: true
+        run: |
+          TAG="mcp-v${{ steps.bump.outputs.version }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Trigger hashpower.io rebuild
+        continue-on-error: true
+        env:
+          DISPATCH_TOKEN: ${{ secrets.HASHPOWER_IO_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "::warning::HASHPOWER_IO_DISPATCH_TOKEN unset — llms.txt will not pick up the npm install line until the next site deploy."
+            exit 0
+          fi
+          curl -sf -X POST \
+            -H "Authorization: Bearer $DISPATCH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/Lumerin-protocol/hashpower-io/dispatches \
+            -d "{\"event_type\":\"abi-published\",\"client_payload\":{\"package\":\"@hashpower/mcp\",\"version\":\"${{ steps.bump.outputs.version }}\",\"source_ref\":\"${{ github.ref_name }}\"}}"
+          echo "Dispatched site rebuild to hashpower-io"
+
+      - name: Summary
+        run: |
+          echo "## 📦 Published @hashpower/mcp@${{ steps.bump.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://www.npmjs.com/package/@hashpower/mcp/v/${{ steps.bump.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"

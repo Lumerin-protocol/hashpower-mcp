@@ -1,0 +1,14 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "ABI packages: bump fast so hosted MCP tracks contract publishes",
+      "matchPackagePrefixes": ["@hashpower/"],
+      "groupName": "hashpower ABI packages",
+      "automerge": false,
+      "prPriority": 10
+    }
+  ]
+}
