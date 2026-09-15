@@ -29,9 +29,10 @@ describe("stateless streamable HTTP", () => {
     try {
       const health = await fetch(`${origin}/health`);
       assert.equal(health.status, 200);
-      const body = (await health.json()) as { ok: boolean; mcp: string; version: string };
+      const body = (await health.json()) as { ok: boolean; mcp: string; version: string; name: string };
       assert.equal(body.ok, true);
       assert.equal(body.mcp, "/mcp");
+      assert.equal(body.name, "dev-hashpower");
       assert.equal(typeof body.version, "string");
       assert.ok(body.version.length > 0);
 
@@ -41,7 +42,8 @@ describe("stateless streamable HTTP", () => {
         clientInfo: { name: "hashpower-mcp-test", version: "0.0.0" },
       });
       assert.equal(init.jsonrpc, "2.0");
-      assert.ok(init.result);
+      const info = init.result as { serverInfo: { name: string } };
+      assert.equal(info.serverInfo.name, "dev-hashpower");
 
       const listed = await rpc(
         `${origin}/mcp`,

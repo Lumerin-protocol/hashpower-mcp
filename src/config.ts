@@ -1,5 +1,6 @@
 export type NetworkEnv = "testnet" | "mainnet";
 export type TransportKind = "stdio" | "http";
+export type McpServerName = "dev-hashpower" | "hashpower";
 
 export interface AppConfig {
   env: NetworkEnv;
@@ -7,6 +8,11 @@ export interface AppConfig {
   docsUrl: string;
   transport: TransportKind;
   port: number;
+}
+
+/** Cursor / MCP client key. Testnet stays off the production `hashpower` name. */
+export function mcpServerName(env: NetworkEnv): McpServerName {
+  return env === "mainnet" ? "hashpower" : "dev-hashpower";
 }
 
 const DEFAULT_RPC: Record<NetworkEnv, string> = {

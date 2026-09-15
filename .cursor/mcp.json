@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "dev-hashpower": {
+      "url": "https://mcp.dev.hashpower.io/mcp"
+    }
+  }
+}

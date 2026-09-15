@@ -1,7 +1,7 @@
 import { createServer as createHttpServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import type { AppConfig } from "./config.ts";
+import { mcpServerName, type AppConfig } from "./config.ts";
 import type { ChainClient } from "./chain.ts";
 import type { DeploymentsManifest } from "./deployments.ts";
 import { createServer } from "./server.ts";
@@ -95,7 +95,8 @@ async function handle(
   if (path === "/health" || path === "/") {
     sendJson(res, 200, {
       ok: true,
-      name: "hashpower-mcp",
+      name: mcpServerName(config.env),
+      package: "hashpower-mcp",
       version: MCP_VERSION,
       env: config.env,
       network: deployments.environment.network,

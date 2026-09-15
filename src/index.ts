@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createChainClient } from "./chain.ts";
-import { loadConfig } from "./config.ts";
+import { loadConfig, mcpServerName } from "./config.ts";
 import { loadDeployments } from "./deployments.ts";
 import { listenHttp } from "./http.ts";
 import { createServer } from "./server.ts";
@@ -10,7 +10,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const deployments = loadDeployments(config.env);
   const client = createChainClient(config, deployments);
-  const banner = `hashpower MCP ${config.env} (${deployments.environment.network}) docs=${config.docsUrl}`;
+  const banner = `${mcpServerName(config.env)} ${config.env} (${deployments.environment.network}) docs=${config.docsUrl}`;
 
   if (config.transport === "http") {
     const listener = await listenHttp(config, deployments, client);
