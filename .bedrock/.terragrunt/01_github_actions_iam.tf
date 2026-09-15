@@ -21,10 +21,12 @@ resource "aws_iam_role" "github_actions_hashpower_mcp" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = [
-              for sub_claim in local.github_oidc_sub_claims :
-              "repo:${local.github_org_repo}:${sub_claim}"
-            ]
+            "token.actions.githubusercontent.com:sub" = flatten([
+              for repo in local.github_org_repo_trust : [
+                for sub_claim in local.github_oidc_sub_claims :
+                "repo:${repo}:${sub_claim}"
+              ]
+            ])
           }
         }
       }

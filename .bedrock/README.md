@@ -29,3 +29,22 @@ Then:
 5. Re-run **Deploy hashpower-mcp** on `dev`.
 
 Do **not** apply `04-lmn` until promoting `main`. The module is already wired so that apply is the production cutover, not a rewrite.
+
+## Apply MAIN (when promoting `dev` → `main`)
+
+```bash
+cd .bedrock/04-lmn
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+Then:
+
+1. Copy `terragrunt output -raw github_actions_role_arn` into repo secret `AWS_ROLE_ARN_LMN`.
+2. GitHub Environment `main`: optional `HASHPOWER_RPC_URL`; vars `HASHPOWER_ENV=mainnet`, `HASHPOWER_DOCS_URL=https://hashpower.io`.
+3. PR `dev` → `main`. Deploy + npm publish already trigger on `main`.
+
+OIDC: this repo uses GitHub immutable subjects (`org@id/repo@id`). The IAM trust policy allows both that form and the name-only form.
+
+Cross-repo cutover: [hashprice-oracle `.ai-docs/dev-main-promotion-runbook.md`](https://github.com/Lumerin-protocol/hashprice-oracle/blob/dev/.ai-docs/dev-main-promotion-runbook.md).
