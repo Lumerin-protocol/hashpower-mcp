@@ -4,7 +4,7 @@ Knowledge base and simulator for agents building Hashpower trading bots. **Not a
 
 The permissionless API is the contracts on Base plus the public subgraphs. This MCP server teaches an agent those rules, lets it scan the same live market a human reads on the trading UI, and lets it simulate — then the agent writes its own bot against [`@hashpower/*-abi`](https://www.npmjs.com/org/hashpower). Execution never goes through this server.
 
-**Instruction manual** (setup, guardrails, tools, units, how to execute locally): [`docs/agent-manual.md`](./docs/agent-manual.md). Hosted for agents at [dev.hashpower.io/build/mcp.md](https://dev.hashpower.io/build/mcp.md).
+**Instruction manual** (setup, guardrails, tools, units, how to execute locally): [`docs/agent-manual.md`](./docs/agent-manual.md). Hosted for agents at [dev.hashpower.io/build/mcp.md](https://dev.hashpower.io/build/mcp.md) (testnet) and [hashpower.io/build/mcp.md](https://hashpower.io/build/mcp.md) (mainnet; site build rewrites client key and URLs).
 
 ## Connect
 

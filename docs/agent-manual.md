@@ -4,9 +4,9 @@ How an agent harness (Cursor, Claude, a custom runtime, a cron bot) connects to 
 
 Published copies:
 
-- Raw markdown (this file in git): [`docs/agent-manual.md`](./agent-manual.md)
-- Hosted for agents: [dev.hashpower.io/build/mcp.md](https://dev.hashpower.io/build/mcp.md) (testnet site) and [hashpower.io/build/mcp.md](https://hashpower.io/build/mcp.md) (mainnet site, when live)
-- HTML: [/build/mcp/](https://dev.hashpower.io/build/mcp/)
+- This git file lists **both** venues. Copy-paste snippets below are testnet-first.
+- Hosted copies are rewritten at **site build** for that environment: [dev.hashpower.io/build/mcp.md](https://dev.hashpower.io/build/mcp.md) (`dev-hashpower`) and [hashpower.io/build/mcp.md](https://hashpower.io/build/mcp.md) (`hashpower` / `https://mcp.hashpower.io/mcp`).
+- HTML: [dev.hashpower.io/build/mcp/](https://dev.hashpower.io/build/mcp/) and [hashpower.io/build/mcp/](https://hashpower.io/build/mcp/).
 
 ---
 

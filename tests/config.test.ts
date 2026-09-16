@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadConfig, mcpServerName } from "../src/config.ts";
+import { loadConfig, mcpInstructions, mcpServerName } from "../src/config.ts";
 
 describe("loadConfig", () => {
   it("defaults to testnet + public Base Sepolia RPC", () => {
@@ -33,5 +33,18 @@ describe("loadConfig", () => {
   it("reserves hashpower for mainnet and names testnet dev-hashpower", () => {
     assert.equal(mcpServerName("testnet"), "dev-hashpower");
     assert.equal(mcpServerName("mainnet"), "hashpower");
+  });
+
+  it("names this instance in initialize instructions", () => {
+    const testnet = mcpInstructions("testnet", "https://dev.hashpower.io");
+    assert.match(testnet, /You are connected to dev-hashpower \(testnet\)/);
+    assert.match(testnet, /this instance is "dev-hashpower"/);
+    assert.match(testnet, /https:\/\/dev\.hashpower\.io\/build\/mcp\.md/);
+
+    const mainnet = mcpInstructions("mainnet", "https://hashpower.io");
+    assert.match(mainnet, /You are connected to hashpower \(mainnet\)/);
+    assert.match(mainnet, /this instance is "hashpower"/);
+    assert.match(mainnet, /https:\/\/hashpower\.io\/build\/mcp\.md/);
+    assert.doesNotMatch(mainnet, /Reserve "hashpower"/);
   });
 });
