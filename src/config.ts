@@ -15,6 +15,33 @@ export function mcpServerName(env: NetworkEnv): McpServerName {
   return env === "mainnet" ? "hashpower" : "dev-hashpower";
 }
 
+/** Initialize / server description. Names this instance; lists the other venue. */
+export function mcpInstructions(env: NetworkEnv, docsUrl: string): string {
+  const name = mcpServerName(env);
+  const clientKeyLine =
+    env === "mainnet"
+      ? 'Client key: this instance is "hashpower" at https://mcp.hashpower.io/mcp (Base mainnet). Testnet is "dev-hashpower" at https://mcp.dev.hashpower.io/mcp.'
+      : 'Client key: this instance is "dev-hashpower" at https://mcp.dev.hashpower.io/mcp (Base Sepolia). Reserve "hashpower" for https://mcp.hashpower.io/mcp (Base mainnet).';
+  return `You are connected to ${name} (${env}) — a knowledge base, live market scanner, and simulator. It is NOT a trading API and never holds keys.
+
+Hashpower is a permissionless marketplace for Bitcoin hashprice risk on Base. The contracts and subgraphs ARE the API.
+
+How to work:
+1. Scan the market the way a human scans the trading UI. Start with get_market_snapshot, or compose get_hashprice, get_orderbook (price + size + orderCount), get_trades, get_funding, get_expirations, get_market_stats, and get_oracle_history.
+2. Read the operator's goals together with get_market_rules / get_margin_model / get_units_and_scaling.
+3. Form a strategy. Validate with simulate_order and check_can_place_order (and get_margin_status / get_positions when a wallet is in play).
+4. Recommend the trade, or execute separately: import @hashpower/*-abi, encode calldata, sign and broadcast from the operator's wallet. Never ask this server to send a transaction or accept a private key.
+
+Hard rules:
+- Wallet addresses are tool parameters. This server has no session and no stickiness.
+- Prerequisite: Base ETH for gas and USDC for collateral. Deposit to CollateralVault before trading. Collateral is unified across futures and perps.
+- Subgraphs can lag; every market read reports chainHead vs subgraphHead.
+- Scaffold tools (build_*_tx) are prototypes only. Production bots encode via the npm packages.
+- Start with get_deployments if you need addresses, subgraph URLs, or ABI package versions.
+- ${clientKeyLine}
+- Full instruction manual: ${docsUrl}/build/mcp.md`;
+}
+
 const DEFAULT_RPC: Record<NetworkEnv, string> = {
   testnet: "https://sepolia.base.org",
   mainnet: "https://mainnet.base.org",

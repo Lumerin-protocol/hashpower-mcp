@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { mcpServerName, type AppConfig } from "./config.ts";
+import { mcpInstructions, mcpServerName, type AppConfig } from "./config.ts";
 import type { ChainClient } from "./chain.ts";
 import type { DeploymentsManifest } from "./deployments.ts";
 import {
@@ -25,27 +25,6 @@ import { MCP_VERSION } from "./version.ts";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
-function instructions(name: string, env: string, docsUrl: string): string {
-  return `You are connected to ${name} (${env}) — a knowledge base, live market scanner, and simulator. It is NOT a trading API and never holds keys.
-
-Hashpower is a permissionless marketplace for Bitcoin hashprice risk on Base. The contracts and subgraphs ARE the API.
-
-How to work:
-1. Scan the market the way a human scans the trading UI. Start with get_market_snapshot, or compose get_hashprice, get_orderbook (price + size + orderCount), get_trades, get_funding, get_expirations, get_market_stats, and get_oracle_history.
-2. Read the operator's goals together with get_market_rules / get_margin_model / get_units_and_scaling.
-3. Form a strategy. Validate with simulate_order and check_can_place_order (and get_margin_status / get_positions when a wallet is in play).
-4. Recommend the trade, or execute separately: import @hashpower/*-abi, encode calldata, sign and broadcast from the operator's wallet. Never ask this server to send a transaction or accept a private key.
-
-Hard rules:
-- Wallet addresses are tool parameters. This server has no session and no stickiness.
-- Prerequisite: Base ETH for gas and USDC for collateral. Deposit to CollateralVault before trading. Collateral is unified across futures and perps.
-- Subgraphs can lag; every market read reports chainHead vs subgraphHead.
-- Scaffold tools (build_*_tx) are prototypes only. Production bots encode via the npm packages.
-- Start with get_deployments if you need addresses, subgraph URLs, or ABI package versions.
-- Client key: use "dev-hashpower" against mcp.dev.hashpower.io (testnet). Reserve "hashpower" for mcp.hashpower.io (mainnet).
-- Full instruction manual: ${docsUrl}/build/mcp.md`;
-}
-
 async function run(fn: () => Promise<ToolResult> | ToolResult): Promise<ToolResult> {
   try {
     return await fn();
@@ -63,7 +42,7 @@ export function createServer(
   const server = new McpServer({
     name,
     version: MCP_VERSION,
-    description: instructions(name, config.env, config.docsUrl),
+    description: mcpInstructions(config.env, config.docsUrl),
   });
 
   server.registerTool(
