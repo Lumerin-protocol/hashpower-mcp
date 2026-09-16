@@ -1,4 +1,4 @@
-# Hashpower MCP — agent instruction manual
+# Hashpower MCP - agent instruction manual
 
 How an agent harness (Cursor, Claude, a custom runtime, a cron bot) connects to Hashpower, scans the market, respects the guardrails, and trades. **This server is not a trading API.** The exchange is the contracts on Base plus the public subgraphs.
 
@@ -19,15 +19,15 @@ Three layers an agent uses:
 | Layer | Role | Holds keys? |
 | --- | --- | --- |
 | **MCP** (`dev-hashpower` / `hashpower`) | Teach rules, scan the same surfaces as the trading UI, simulate fills and margin | No |
-| **`@hashpower/*-abi` npm packages** | Encode `deposit` / `createOrder` / … calldata | No |
-| **Operator wallet** | Sign and broadcast. This is the only write path | Yes — on the operator's machine, never on ours |
+| **`@hashpower/*-abi` npm packages** | Encode `deposit` / `withdraw` / `createOrder` / `cancelOrder` calldata | No |
+| **Operator wallet** | Sign and broadcast. This is the only write path | Yes - on the operator's machine, never on ours |
 
 The intended loop:
 
-1. **Scan** — MCP reads (or the agent reads subgraphs / `eth_call` itself).
-2. **Decide** — operator goals + market rules + live book/tape/oracle.
-3. **Simulate** — `simulate_order` and `check_can_place_order` (on-chain views).
-4. **Execute elsewhere** — encode with the ABI packages, sign locally, send to Base.
+1. **Scan** - MCP reads (or the agent reads subgraphs / `eth_call` itself).
+2. **Decide** - operator goals + market rules + live book/tape/oracle.
+3. **Simulate** - `simulate_order` and `check_can_place_order` (on-chain views).
+4. **Execute elsewhere** - a **local executor** you run, with the private key only in that process: fund the EOA, `approve`+`deposit` into `CollateralVault`, then `createOrder` / `cancelOrder` / flatten / `withdraw`.
 
 A production bot does **not** have to stay on MCP at runtime. Once the strategy is written, it can talk to chain and subgraphs directly. MCP is the research terminal and the on-ramp for a new harness.
 
@@ -38,7 +38,7 @@ A production bot does **not** have to stay on MCP at runtime. Once the strategy 
 Copy these into the harness system prompt. They are also the MCP server's own instructions.
 
 1. **Never send a private key to the MCP server.** It has no signing tools and must not gain any.
-2. **Never ask the MCP to broadcast a transaction.** `build_*_tx` returns unsigned calldata only, and is a prototype — production code encodes via npm ABIs.
+2. **Never ask the MCP to broadcast a transaction.** `build_*_tx` returns unsigned calldata only, and is a prototype - production code encodes via npm ABIs.
 3. **Wallet addresses are tool parameters**, not login state. The hosted server is stateless (no MCP session, no sticky load balancer).
 4. **Testnet vs mainnet are different venues.** Use the `dev-hashpower` client key against `https://mcp.dev.hashpower.io/mcp` (Base Sepolia). Reserve the `hashpower` key for `https://mcp.hashpower.io/mcp` (Base mainnet, when live). `initialize.serverInfo.name` matches that split.
 5. **Fund the wallet before trading:** Base ETH for gas and USDC for collateral. Deposit USDC to `CollateralVault` first. One vault backs both futures and perps.
@@ -85,7 +85,7 @@ The hosted server speaks **MCP Streamable HTTP**, JSON responses, **no session**
 }
 ```
 
-Reload MCP tools after connecting. You should see `get_market_snapshot`, `get_orderbook`, `simulate_order`, and the rest — not a 12-tool subset from an older image.
+Reload MCP tools after connecting. You should see `get_market_snapshot`, `get_orderbook`, `simulate_order`, and the rest - not a 12-tool subset from an older image.
 
 **Any other harness** that supports Streamable HTTP: same URL. Typical JSON-RPC:
 
@@ -120,36 +120,55 @@ Optional env: `HASHPOWER_RPC_URL` (defaults to the public Base Sepolia RPC), `HA
 
 Stdio is for the **MCP process**. It still does not sign. Put keys only in a separate executor you run.
 
-### 4.3 What the operator must have before any fill
+### 4.3 There is no "connect wallet" on MCP
 
-- An EOA the harness is allowed to use (or a local bot the operator starts).
-- **Base ETH** for gas on the target chain.
-- **USDC** (6 decimals) for collateral.
-- A **deposit** into `CollateralVault` (`approve` the vault, then `deposit`). Collateral is unified across futures and perps.
-- For futures: a tradable `expirationAt` from `get_expirations` (unix seconds).
+Hashpower does not have accounts, API keys, or an MCP login. **The EOA that signs is the account.**
 
-Connect the [trading UI](https://dev.hashpower.io) with the **same wallet** to watch what the bot does. Positions are keyed by address; there is no extra dashboard API.
+| What people call "connect" | What it actually is |
+| --- | --- |
+| Pointing Cursor at MCP | Research terminal only. No wallet, no session. |
+| WalletConnect on the [trading UI](https://dev.hashpower.exchange) | Human blotter. Same address as the bot, so you can watch fills. Not required for trading. |
+| Local executor with a private key | The write path. Load the key from env / KMS / hardware **on that host**. Sign `approve`, `deposit`, `createOrder`, `cancelOrder`, `withdraw`. |
+
+Do not paste a private key into chat, MCP tool arguments, or hosted config. Give it only to the process you run.
+
+### 4.4 Fund the EOA and deposit liquidity
+
+A bot that "does everything" still cannot mint ETH or USDC. The operator funds the EOA first; the executor then moves USDC into the vault.
+
+1. Put **Base ETH** (gas) and **USDC** (6 decimals) on the EOA for the target chain. There is no Hashpower faucet.
+2. Resolve addresses once (`get_deployments` or `deployments.json`): `CollateralToken` (USDC), `CollateralVault`, `HashPowerPerpsDEX`, `HashPowerFutures` / `Futures`, `PortfolioMarginEngine`.
+3. **Approve** the vault to spend USDC, then **deposit**:
+   - `USDC.approve(CollateralVault, amount)` then `CollateralVault.deposit(amount)` (two txs), or
+   - `CollateralVault.depositForPermit(...)` if the token supports EIP-2612 (one tx).
+4. Amounts are USDC 6-decimal integer strings (`"1000000"` = $1). `deposit` credits a receipt balance that **both** futures and perps share. You do not deposit per venue.
+5. Confirm with MCP `get_margin_status(wallet)` (`balance`, `initialMargin`, `maintenanceMargin`, `excessOverIM`, `isHealthy`) or `CollateralVault.balanceOf(wallet)` on chain.
+
+Until step 3 lands, `check_can_place_order` will fail for a funded-but-not-deposited wallet (USDC in the EOA is not margin until it is in the vault).
+
+Full semantics: [collateral-and-accounts](https://dev.hashpower.io/semantics/collateral-and-accounts.md) or MCP `get_market_rules` with slug `collateral-and-accounts`.
 
 ---
 
 ## 5. Operating loop
 
-Give the model **goals** in the user prompt (risk, venue, size cap, “recommend only” vs “you may send from my local signer”). Then the agent should:
+Give the model **goals** in the user prompt (risk, venue, size cap, "recommend only" vs "you may send from my local signer"). Then the agent should:
 
 1. `get_deployments` once if it needs addresses / ABI package versions (optional if it will only scan).
-2. `get_market_snapshot` — one-shot UI scan: hashprice, perps book+tape+funding, futures expiries+nearest book, stats, 24h candles.
+2. `get_market_snapshot` - one-shot UI scan: hashprice, perps book+tape+funding, futures expiries+nearest book, stats, 24h candles.
 3. Pull semantics as needed: `get_market_rules` (omit slug for the catalog), `get_units_and_scaling`, `get_margin_model`.
-4. If a wallet is in play: `get_margin_status` and `get_positions`.
+4. If a wallet is in play: `get_margin_status` and `get_positions`. If `balance` is `"0"` and the EOA holds USDC, the executor still needs the approve+deposit in section 4.4.
 5. Form a concrete order: venue, price, signed quantity, TIF (`GTC` / `IOC` / `FOK`), `expirationAt` for futures.
-6. `simulate_order` — would it fill, at what average, remainder? Does **not** place.
+6. `simulate_order` - would it fill, at what average, remainder? Does **not** place.
 7. `check_can_place_order` with a conservative `additionalIm` in USDC 6-decimal integer units.
 8. **Recommend** the calldata and intent to the operator, **or** (only in a local executor that already has a key) encode and send. Stop if the operator said not to trade.
 
 Starter prompts:
 
-- *Scan the Hashpower market like the trading UI and summarize hashprice, perps book, tape, funding, and the nearest futures expiry — do not trade.*
+- *Scan the Hashpower market like the trading UI and summarize hashprice, perps book, tape, funding, and the nearest futures expiry - do not trade.*
 - *Using my goals (hedge 1 PH/s-day of hashprice for the front month, max 50 bps from mid, GTC), propose a futures order. Simulate it. Do not send.*
-- *Wallet 0x… is the bot. Check margin and open orders. Recommend whether we can add a small perps bid at best bid. Do not send.*
+- *Wallet 0x... is the bot. Check margin and open orders. If the vault is empty, list the approve+deposit txs. Recommend whether we can add a small perps bid at best bid. Do not send.*
+- *I run a local executor with the key in env (never send the key here). From wallet 0x..., deposit if needed, then trade perps and the front-month future within my limits, and flatten + withdraw free collateral if the book moves against the plan.*
 
 ---
 
@@ -170,14 +189,14 @@ Starter prompts:
 | --- | --- |
 | `get_market_snapshot` | First look at the market. Optional `maxLevels`, `trades`, `expirationAt` |
 | `get_hashprice` | `pair`: `usd` (trading index) or `btc` |
-| `get_orderbook` | Depth with **price + size + orderCount**. `venue` `perps` \| `futures`; futures requires `expirationAt` |
+| `get_orderbook` | Depth with **price + size + orderCount**. `venue` `perps` or `futures`; futures requires `expirationAt` |
 | `get_trades` | Public tape. Optional `wallet` filter. Each match appears twice (one row per side) |
-| `get_funding` | Perps funding strip. Optional wallet → `getPendingFunding` |
+| `get_funding` | Perps funding strip. Optional wallet adds on-chain `getPendingFunding` |
 | `get_expirations` | Futures market selector + settlement overlay |
 | `get_market_stats` | Fees, ticks, volume, `getMarketPrice` |
-| `get_oracle_history` | Chart data: `hashpriceUsd` \| `hashpriceBtc` \| `btcUsd` \| `networkHashrate1d` \| `networkHashrate7d`; `tick` \| `hour` \| `day` |
-| `get_positions` | Open orders + sessions for a `wallet` |
-| `get_margin_status` | Vault balance, portfolio IM/MM, `isHealthy` |
+| `get_oracle_history` | Chart data: `hashpriceUsd`, `hashpriceBtc`, `btcUsd`, `networkHashrate1d`, `networkHashrate7d`; `tick`, `hour`, or `day` |
+| `get_positions` | Open orders + sessions for a `wallet`. Order `id` is the on-chain `bytes32` for `cancelOrder` |
+| `get_margin_status` | Vault `balance`, portfolio IM/MM, `excessOverIM`, `isHealthy` |
 
 ### Simulate
 
@@ -193,6 +212,8 @@ Starter prompts:
 | `build_deposit_tx` | Learning the approve+deposit sequence. **Do not** treat as a production deposit API |
 | `build_order_tx` | Learning `createOrder` encoding. Production bots encode via npm |
 
+There is no `build_withdraw_tx` / `build_cancel_tx` on MCP. Encode those locally (section 8).
+
 ---
 
 ## 7. Units (so the agent does not invent decimals)
@@ -201,37 +222,59 @@ Always pass **integer strings** into tools. Scale for display yourself.
 
 | Quantity | Scale | Example |
 | --- | --- | --- |
-| CLOB price (both venues) | USDC **6** decimals; `minimumPriceIncrement` is typically `10000` ($0.01) | `"37680000"` → $37.68 |
-| Perps size | **6** decimals (`QUANTITY_DECIMALS`) | `"4024333"` → 4.024333 |
-| Futures size | Whole contracts (`QUANTITY_DECIMALS` = 0) | `"16"` → 16 contracts |
-| HashpriceUSD oracle | **8** decimals (`latestRoundData().answer`) | `"3766413350"` → $37.66413350 |
+| CLOB price (both venues) | USDC **6** decimals; `minimumPriceIncrement` is typically `10000` ($0.01) | `"37680000"` = $37.68 |
+| Perps size | **6** decimals (`QUANTITY_DECIMALS`) | `"4024333"` = 4.024333 |
+| Futures size | Whole contracts (`QUANTITY_DECIMALS` = 0) | `"16"` = 16 contracts |
+| HashpriceUSD oracle | **8** decimals (`latestRoundData().answer`) | `"3766413350"` = $37.66413350 |
 | HashpriceBTC oracle | **16** decimals | see `get_hashprice` `pair=btc` |
-| Vault / `additionalIm` | USDC **6** decimals | `"1000000"` → $1 |
+| Vault / `additionalIm` | USDC **6** decimals | `"1000000"` = $1 |
 | Futures `expirationAt` | Unix **seconds** | from `get_expirations` |
-| Oracle subgraph timestamps | Goldsky **microseconds** (tools also return `timestampUnix`) | — |
-| Perps `fundingRate` | 1e18-scaled; UI percent ≈ `(rate / 1e18) * 100` | testnet may be `0` |
+| Oracle subgraph timestamps | Goldsky **microseconds** (tools also return `timestampUnix`) | n/a |
+| Perps `fundingRate` | 1e18-scaled; UI percent is about `(rate / 1e18) * 100` | testnet may be `0` |
 
 `get_orderbook` already returns `bestBid` / `bestAsk` / `spread` / `mid` / depths plus per-level `quantity` and `orderCount`.
 
 ---
 
-## 8. Execute (outside this server)
+## 8. Local execution bot (outside this server)
 
-After a green simulation, a **local** process the operator controls does the write. Sketch (viem + testnet packages):
+Split the work:
+
+1. **Research** - hosted MCP (or your own RPC + subgraphs). No keys.
+2. **Execute** - a process only you run. Private key in env, KMS, or hardware on **that** host.
+
+That executor can cover the full life cycle: deposit liquidity, trade perps and futures, cancel, flatten when the market moves, withdraw free collateral. Hosted MCP never sees the key and never sends the txs.
+
+Write-path (viem + the npm packages; testnet sketch):
 
 ```ts
-import { createWalletClient, createPublicClient, http, encodeFunctionData } from "viem";
+import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 import { HashPowerPerpsDEXAbi } from "@hashpower/perps-abi";
 import { CollateralVaultAbi } from "@hashpower/collateral-abi";
 import { ERC20Abi, HashPowerFuturesAbi } from "@hashpower/futures-abi";
 
-// Load addresses from @hashpower/*/deployments.json → environments.testnet.contracts
+// account = privateKeyToAccount(process.env.EXECUTOR_PRIVATE_KEY)  // local only
+// addresses: @hashpower/*/deployments.json -> environments.testnet.contracts
 // TIF: 0 = GTC, 1 = IOC, 2 = FOK
-// perps createOrder(price, quantity, tif)
-// futures createOrder(price, expirationAt, quantity, tif)
+
+// Fund (operator, once): native ETH + USDC on the EOA
+// USDC.approve(vault, amount)
+// vault.deposit(amount)                  // or vault.depositForPermit(...)
+// perps.createOrder(price, quantity, tif)
+// futures.createOrder(price, expirationAt, quantity, tif)
+// perps.cancelOrder(orderId) / futures.cancelOrder(orderId)   // bytes32 from get_positions
+// flatten: createOrder with the opposite signed quantity (and expirationAt on futures)
+// vault.withdraw(amount)                 // reverts if it would breach portfolio MM
 ```
+
+Exit when markets change:
+
+1. `get_positions(wallet)` - cancel each resting order (`cancelOrder` with that `id`).
+2. For each open session, `simulate_order` an opposite signed quantity, then `createOrder` to flatten (IOC/FOK if you must not rest).
+3. `get_margin_status` - `excessOverIM` is a hint; `withdraw` is still gated on chain. You cannot pull collateral that backs remaining exposure.
+4. Optional: disconnect nothing. There is no session to close. Stop the executor.
 
 Rules for that process:
 
