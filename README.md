@@ -4,6 +4,8 @@ Knowledge base and simulator for agents building Hashpower trading bots. **Not a
 
 The permissionless API is the contracts on Base plus the public subgraphs. This MCP server teaches an agent those rules, lets it scan the same live market a human reads on the trading UI, and lets it simulate — then the agent writes its own bot against [`@hashpower/*-abi`](https://www.npmjs.com/org/hashpower). Execution never goes through this server.
 
+**Instruction manual** (setup, guardrails, tools, units, how to execute locally): [`docs/agent-manual.md`](./docs/agent-manual.md). Hosted for agents at [dev.hashpower.io/build/mcp.md](https://dev.hashpower.io/build/mcp.md).
+
 ## Connect
 
 **Hosted testnet** — Cursor key `dev-hashpower` (reserves `hashpower` for production):
@@ -64,35 +66,15 @@ Prerequisite for any real trade: the bot wallet holds Base ETH (gas) and USDC (c
 
 ## Tools
 
-**Knowledge** — from [hashpower.io/build](https://dev.hashpower.io/build/) / `/semantics`, same prose as GitBook:
+See the [instruction manual](./docs/agent-manual.md) for the full catalog, units, and operating loop. Short list:
 
-- `get_deployments`
-- `get_market_rules` (optional `slug`)
-- `get_margin_model`
-- `get_units_and_scaling`
+**Knowledge:** `get_deployments`, `get_market_rules`, `get_margin_model`, `get_units_and_scaling`
 
-**Read** — `eth_call` + subgraphs, no keys. Same surfaces a human scans on the trading UI. `wallet` is always a **parameter**, never session state.
+**Read:** `get_market_snapshot`, `get_hashprice`, `get_orderbook`, `get_trades`, `get_funding`, `get_expirations`, `get_market_stats`, `get_oracle_history`, `get_positions`, `get_margin_status`
 
-- `get_market_snapshot` — one-shot scan (hashprice, books with size, tape, funding, expiries, stats, 24h candles)
-- `get_hashprice` — on-chain `latestRoundData()` plus scaled decimal
-- `get_orderbook` — prices **and** sizes (`getQuantityAtPrice`) plus subgraph `orderCount`
-- `get_trades` — public tape (optional wallet filter)
-- `get_funding` — perps funding strip (optional wallet `getPendingFunding`)
-- `get_expirations` — futures market-selector dates + settlement
-- `get_market_stats` — venue singleton + `getMarketPrice`
-- `get_oracle_history` — hashprice / BTC-USD / network hashrate ticks or candles
-- `get_positions` / `get_margin_status`
+**Simulate:** `simulate_order`, `check_can_place_order`
 
-Form a strategy from that plus the operator's goals, then `simulate_order` / `check_can_place_order`. **Execute separately** by encoding `@hashpower/*-abi` from your own wallet.
-
-**Simulate**
-
-- `simulate_order`
-- `check_can_place_order`
-
-**Scaffold (prototype only)**
-
-- `build_deposit_tx` / `build_order_tx` — unsigned calldata. Production bots encode via the npm packages themselves.
+**Scaffold (prototype only):** `build_deposit_tx`, `build_order_tx` — unsigned calldata. Production bots encode via the npm packages.
 
 ## Local dev
 

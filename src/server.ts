@@ -25,7 +25,7 @@ import { MCP_VERSION } from "./version.ts";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
-function instructions(name: string, env: string): string {
+function instructions(name: string, env: string, docsUrl: string): string {
   return `You are connected to ${name} (${env}) — a knowledge base, live market scanner, and simulator. It is NOT a trading API and never holds keys.
 
 Hashpower is a permissionless marketplace for Bitcoin hashprice risk on Base. The contracts and subgraphs ARE the API.
@@ -42,7 +42,8 @@ Hard rules:
 - Subgraphs can lag; every market read reports chainHead vs subgraphHead.
 - Scaffold tools (build_*_tx) are prototypes only. Production bots encode via the npm packages.
 - Start with get_deployments if you need addresses, subgraph URLs, or ABI package versions.
-- Client key: use "dev-hashpower" against mcp.dev.hashpower.io (testnet). Reserve "hashpower" for mcp.hashpower.io (mainnet).`;
+- Client key: use "dev-hashpower" against mcp.dev.hashpower.io (testnet). Reserve "hashpower" for mcp.hashpower.io (mainnet).
+- Full instruction manual: ${docsUrl}/build/mcp.md`;
 }
 
 async function run(fn: () => Promise<ToolResult> | ToolResult): Promise<ToolResult> {
@@ -62,7 +63,7 @@ export function createServer(
   const server = new McpServer({
     name,
     version: MCP_VERSION,
-    description: instructions(name, config.env),
+    description: instructions(name, config.env, config.docsUrl),
   });
 
   server.registerTool(
