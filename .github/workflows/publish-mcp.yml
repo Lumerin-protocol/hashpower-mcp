@@ -122,3 +122,15 @@ jobs:
           echo "## 📦 Published @hashpower/mcp@${{ steps.bump.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "https://www.npmjs.com/package/@hashpower/mcp/v/${{ steps.bump.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Send Slack notification
+        if: always() && steps.bump.outputs.version != ''
+        uses: ./.github/actions/slack-notify
+        with:
+          status: ${{ job.status }}
+          environment: "npm"
+          service_name: "@hashpower/mcp"
+          version: ${{ steps.bump.outputs.version || 'unknown' }}
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          additional_info: ${{ format('*Package:* <https://www.npmjs.com/package/@hashpower/mcp/v/{0}|@hashpower/mcp@{0}>', steps.bump.outputs.version) }}

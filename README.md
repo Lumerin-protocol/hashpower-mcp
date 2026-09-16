@@ -2,13 +2,13 @@
 
 Knowledge base and simulator for agents building Hashpower trading bots. **Not a trading API.** This server never holds keys, never broadcasts transactions, and is never in the production trade path.
 
-The permissionless API is the contracts on Base plus the public subgraphs. This MCP server teaches an agent those rules, lets it scan the same live market a human reads on the trading UI, and lets it simulate — then the agent writes its own bot against [`@hashpower/*-abi`](https://www.npmjs.com/org/hashpower). Execution never goes through this server.
+The permissionless API is the contracts on Base plus the public subgraphs. This MCP server teaches an agent those rules, lets it scan the same live market a human reads on the trading UI, and lets it simulate - then the agent writes its own bot against [`@hashpower/*-abi`](https://www.npmjs.com/org/hashpower). Execution never goes through this server.
 
 **Instruction manual** (setup, guardrails, tools, units, how to execute locally): [`docs/agent-manual.md`](./docs/agent-manual.md). Hosted for agents at [dev.hashpower.io/build/mcp.md](https://dev.hashpower.io/build/mcp.md) (testnet) and [hashpower.io/build/mcp.md](https://hashpower.io/build/mcp.md) (mainnet; site build rewrites client key and URLs).
 
 ## Connect
 
-**Hosted testnet** — Cursor key `dev-hashpower` (reserves `hashpower` for production):
+**Hosted testnet** - Cursor key `dev-hashpower` (reserves `hashpower` for production):
 
 ```json
 {
@@ -74,7 +74,7 @@ See the [instruction manual](./docs/agent-manual.md) for the full catalog, units
 
 **Simulate:** `simulate_order`, `check_can_place_order`
 
-**Scaffold (prototype only):** `build_deposit_tx`, `build_order_tx` — unsigned calldata. Production bots encode via the npm packages.
+**Scaffold (prototype only):** `build_deposit_tx`, `build_order_tx` - unsigned calldata. Production bots encode via the npm packages.
 
 ## Local dev
 

@@ -22,7 +22,7 @@ export function mcpInstructions(env: NetworkEnv, docsUrl: string): string {
     env === "mainnet"
       ? 'Client key: this instance is "hashpower" at https://mcp.hashpower.io/mcp (Base mainnet). Testnet is "dev-hashpower" at https://mcp.dev.hashpower.io/mcp.'
       : 'Client key: this instance is "dev-hashpower" at https://mcp.dev.hashpower.io/mcp (Base Sepolia). Reserve "hashpower" for https://mcp.hashpower.io/mcp (Base mainnet).';
-  return `You are connected to ${name} (${env}) — a knowledge base, live market scanner, and simulator. It is NOT a trading API and never holds keys.
+  return `You are connected to ${name} (${env}) - a knowledge base, live market scanner, and simulator. It is NOT a trading API and never holds keys.
 
 Hashpower is a permissionless marketplace for Bitcoin hashprice risk on Base. The contracts and subgraphs ARE the API.
 
@@ -34,7 +34,7 @@ How to work:
 
 Hard rules:
 - Wallet addresses are tool parameters. This server has no session and no stickiness.
-- Prerequisite: Base ETH for gas and USDC for collateral. Deposit to CollateralVault before trading. Collateral is unified across futures and perps.
+- Prerequisite: Base ETH for gas and USDC for collateral. A local executor approve+deposits to CollateralVault before trading. Collateral is unified across futures and perps. Never send the private key here.
 - Subgraphs can lag; every market read reports chainHead vs subgraphHead.
 - Scaffold tools (build_*_tx) are prototypes only. Production bots encode via the npm packages.
 - Start with get_deployments if you need addresses, subgraph URLs, or ABI package versions.
