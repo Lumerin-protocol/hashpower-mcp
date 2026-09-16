@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadConfig } from "../src/config.ts";
+import { loadConfig, mcpServerName } from "../src/config.ts";
 
 describe("loadConfig", () => {
   it("defaults to testnet + public Base Sepolia RPC", () => {
@@ -28,5 +28,10 @@ describe("loadConfig", () => {
   it("strips trailing slash on docs URL", () => {
     const cfg = loadConfig({ HASHPOWER_DOCS_URL: "https://example.test/" });
     assert.equal(cfg.docsUrl, "https://example.test");
+  });
+
+  it("reserves hashpower for mainnet and names testnet dev-hashpower", () => {
+    assert.equal(mcpServerName("testnet"), "dev-hashpower");
+    assert.equal(mcpServerName("mainnet"), "hashpower");
   });
 });

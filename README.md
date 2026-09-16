@@ -6,26 +6,38 @@ The permissionless API is the contracts on Base plus the public subgraphs. This 
 
 ## Connect
 
-**Hosted (Streamable HTTP, this environment's URL):**
+**Hosted testnet** — Cursor key `dev-hashpower` (reserves `hashpower` for production):
 
 ```json
 {
   "mcpServers": {
-    "hashpower": {
+    "dev-hashpower": {
       "url": "https://mcp.dev.hashpower.io/mcp"
     }
   }
 }
 ```
 
-On `main` that hostname is `https://mcp.hashpower.io/mcp`. Same image, `HASHPOWER_ENV` flipped by the deploy workflow.
+**Hosted mainnet** (when LMN is live):
+
+```json
+{
+  "mcpServers": {
+    "hashpower": {
+      "url": "https://mcp.hashpower.io/mcp"
+    }
+  }
+}
+```
+
+Same image, `HASHPOWER_ENV` flipped by the deploy workflow. `initialize.serverInfo.name` is `dev-hashpower` on testnet and `hashpower` on mainnet.
 
 **Local stdio** (agent brings its own RPC):
 
 ```json
 {
   "mcpServers": {
-    "hashpower": {
+    "dev-hashpower": {
       "command": "npx",
       "args": ["-y", "@hashpower/mcp"],
       "env": {
