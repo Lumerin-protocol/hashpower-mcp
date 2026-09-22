@@ -14,4 +14,15 @@ describe("loadDeployments", () => {
     assert.ok(manifest.environment.subgraphs.perps);
     assert.ok(manifest.packages["@hashpower/oracle-abi"]?.version);
   });
+
+  it("merges the four published ABI packages for mainnet", () => {
+    const manifest = loadDeployments("mainnet");
+    assert.equal(manifest.environment.chainId, 8453);
+    assert.ok(requireContract(manifest.environment.contracts, "HashpriceUSD"));
+    assert.ok(requireContract(manifest.environment.contracts, "CollateralVault"));
+    assert.ok(requireContract(manifest.environment.contracts, "HashPowerFutures", "Futures"));
+    assert.ok(requireContract(manifest.environment.contracts, "HashPowerPerpsDEX"));
+    assert.ok(manifest.environment.subgraphs.futures);
+    assert.ok(manifest.environment.subgraphs.perps);
+  });
 });
