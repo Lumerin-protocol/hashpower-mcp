@@ -66,12 +66,27 @@ jobs:
 
       - name: Update ABI packages
         run: |
-          pnpm update \
+          # dev MCP tracks the npm dist-tag `dev` (testnet manifest, minor line).
+          # main MCP tracks `latest` (mainnet manifest, 1.x). A package that
+          # does not have the tag yet is left as pinned.
+          if [ "${{ steps.ref.outputs.branch }}" = "main" ]; then
+            TAG=latest
+          else
+            TAG=dev
+          fi
+          echo "Installing @hashpower/*-abi@$TAG"
+          for pkg in \
             @hashpower/oracle-abi \
             @hashpower/collateral-abi \
             @hashpower/futures-abi \
-            @hashpower/perps-abi \
-            --latest
+            @hashpower/perps-abi
+          do
+            if npm view "$pkg@$TAG" version >/dev/null 2>&1; then
+              pnpm add "$pkg@$TAG"
+            else
+              echo "::warning::$pkg has no '$TAG' dist-tag yet — leaving the current pin"
+            fi
+          done
           pnpm check && pnpm test
 
       - uses: peter-evans/create-pull-request@v7
