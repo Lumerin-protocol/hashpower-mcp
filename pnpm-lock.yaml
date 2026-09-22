@@ -9,17 +9,17 @@ importers:
   .:
     dependencies:
       '@hashpower/collateral-abi':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^3.0.0
+        version: 3.0.0
       '@hashpower/futures-abi':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^3.0.0
+        version: 3.0.0
       '@hashpower/oracle-abi':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^3.0.0
+        version: 3.0.0
       '@hashpower/perps-abi':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^3.0.0
+        version: 3.0.0
       '@modelcontextprotocol/sdk':
         specifier: ^1.25.0
         version: 1.30.0(zod@3.25.76)
@@ -257,20 +257,20 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@hashpower/collateral-abi@0.2.0':
-    resolution: {integrity: sha512-/gKQHDgKyoiwnPu6sDptJpMzhl88R+TkVH14KfXf1kLKqG8UnTpZLtiCpufaI9HVtK63oOzukPk/cRkvCohqjw==}
+  '@hashpower/collateral-abi@3.0.0':
+    resolution: {integrity: sha512-WWllxb+STZ/greTG5APpNj2wD9NMVAcu/qXxShBkfnLImyQlJn3tg/YIZmGip0sg56/K6TfhYEFGMKFVJz8+Tw==}
     engines: {node: '>=22'}
 
-  '@hashpower/futures-abi@0.4.0':
-    resolution: {integrity: sha512-jgqRGY8Rea/zcjuzydEAlhNmX6CanRyrTKmt/hIaaIwqglV2DkcJrE2ulQgz5a3aTUsupc3upOsPfeuD7Expcw==}
+  '@hashpower/futures-abi@3.0.0':
+    resolution: {integrity: sha512-KTvl2l2TiaNNxrf453EYudl1D4skUCzB8Z61akdRFN1ZHzDp4oH6hObsBBuAugpiVphCLyzRZHyipOcskfICzQ==}
     engines: {node: '>=22'}
 
-  '@hashpower/oracle-abi@0.1.0':
-    resolution: {integrity: sha512-XF6M+J0D1X2ajldgdTghsfdQtXyDK/oE3HojdMc5R/IAU475Vg1+PQP2/Ho+D4EwoV/Jc06SU8uonptXRNkowQ==}
+  '@hashpower/oracle-abi@3.0.0':
+    resolution: {integrity: sha512-2qSKxIvjXi5pWRuXDbKn3jFHEllUyXwMjQciwzRgW1CCwp0iPqyoFSVU+QDaTE5t37yiJ5mWNIQdTOZYSEeDFQ==}
     engines: {node: '>=22'}
 
-  '@hashpower/perps-abi@0.3.0':
-    resolution: {integrity: sha512-oNFZerM4xz1XWKD67ploX0mHDKwfoSfziONkN/f5GJ+RXQgZ6TNYAGOgO0gDmPuNSZhmKrcsD3mxuNMHUQkiJg==}
+  '@hashpower/perps-abi@3.0.0':
+    resolution: {integrity: sha512-R5TapNTJEV2tocj4iga7s2zrRnSD4Rdvd8WuQpRju1lweDbvQxNYjmT8BA6OQ++EV8Tv3HEuXNYDbujpzF3svw==}
     engines: {node: '>=22'}
 
   '@hono/node-server@2.1.1':
@@ -854,13 +854,13 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hashpower/collateral-abi@0.2.0': {}
+  '@hashpower/collateral-abi@3.0.0': {}
 
-  '@hashpower/futures-abi@0.4.0': {}
+  '@hashpower/futures-abi@3.0.0': {}
 
-  '@hashpower/oracle-abi@0.1.0': {}
+  '@hashpower/oracle-abi@3.0.0': {}
 
-  '@hashpower/perps-abi@0.3.0': {}
+  '@hashpower/perps-abi@3.0.0': {}
 
   '@hono/node-server@2.1.1(hono@4.13.7)':
     dependencies:

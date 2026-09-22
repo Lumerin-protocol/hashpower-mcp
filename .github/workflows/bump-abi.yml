@@ -1,9 +1,12 @@
 name: Bump ABI packages
 
 # Fired by the four @hashpower/*-abi publish workflows (repository_dispatch
-# abi-published). Opens a PR on the same branch the ABI came from (`dev` or
-# `main`) so hosted MCP and npx pick up new addresses/ABIs without anyone
-# remembering. Does not push to protected branches.
+# abi-published). Opens a PR on `dev` that moves the committed pins to the
+# npm `latest` line. That is what `npx @hashpower/mcp` installs, and every
+# `latest` version carries both networks. Hosted MCP does not depend on
+# these pins: deploy-mcp.yml resolves `dev` or `latest` at image build.
+# Keeping one set of pins means dev → main merges do not conflict.
+# Does not push to protected branches.
 #
 # PAT: HASHPOWER_MCP_DISPATCH_TOKEN (Contents + Pull requests on this repo).
 # Can be the same fine-grained PAT as HASHPOWER_IO_DISPATCH_TOKEN if that
@@ -48,7 +51,9 @@ jobs:
             main|dev) ;;
             *) echo "::error::Refusing to bump unexpected branch '$REF'"; exit 1 ;;
           esac
-          echo "branch=$REF" >> "$GITHUB_OUTPUT"
+          # Pins are identical on both branches and only ever change on dev.
+          # main receives them through the normal dev → main promotion.
+          echo "branch=dev" >> "$GITHUB_OUTPUT"
           echo "package=$PKG" >> "$GITHUB_OUTPUT"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
 
@@ -66,14 +71,10 @@ jobs:
 
       - name: Update ABI packages
         run: |
-          # dev MCP tracks the npm dist-tag `dev` (testnet manifest, minor line).
-          # main MCP tracks `latest` (mainnet manifest, 1.x). A package that
-          # does not have the tag yet is left as pinned.
-          if [ "${{ steps.ref.outputs.branch }}" = "main" ]; then
-            TAG=latest
-          else
-            TAG=dev
-          fi
+          # The committed pins follow `latest` on every branch. The `dev`
+          # dist-tag has an empty mainnet block, so it is never committed;
+          # the dev image picks it up at build time instead.
+          TAG=latest
           echo "Installing @hashpower/*-abi@$TAG"
           for pkg in \
             @hashpower/oracle-abi \
@@ -99,5 +100,5 @@ jobs:
           body: |
             Automatic follow-up after `${{ steps.ref.outputs.package }}@${{ steps.ref.outputs.version }}`.
 
-            Source branch: `${{ steps.ref.outputs.branch }}` (dev → testnet MCP, main → mainnet MCP).
+            Moves the committed `@hashpower/*-abi` pins to the npm `latest` line. Hosted dev and main images resolve their own dist-tag at build time, so this only affects `npx @hashpower/mcp` and local runs.
           labels: dependencies

@@ -9,6 +9,12 @@ name: Deploy hashpower-mcp
 #   dev  → titanio-dev → HASHPOWER_ENV=testnet → https://mcp.dev.hashpower.io/mcp
 #   main → titanio-lmn → HASHPOWER_ENV=mainnet → https://mcp.hashpower.io/mcp
 #
+# ABI packages are not taken from the committed lockfile. The build resolves
+# @hashpower/*-abi from the npm dist-tag for the environment (dev → `dev`,
+# main → `latest`) and bakes those exact versions into the image. `/health`
+# reports them and the verify job fails if they differ. Both branches can
+# therefore carry the same package.json.
+#
 # GitHub Environments `dev` / `main`:
 #   vars    HASHPOWER_ENV, HASHPOWER_DOCS_URL, MCP_DESIRED_COUNT (default 1)
 #   secrets HASHPOWER_RPC_URL (optional — falls back to public Base RPC)
@@ -65,6 +71,8 @@ jobs:
       hashpower_env: ${{ steps.meta.outputs.hashpower_env }}
       docs_url: ${{ steps.meta.outputs.docs_url }}
       is_cicd_branch: ${{ steps.meta.outputs.is_cicd_branch }}
+      abi_tag: ${{ steps.abi.outputs.tag }}
+      abi_versions: ${{ steps.abi.outputs.versions }}
     steps:
       - uses: actions/checkout@v5
 
@@ -112,6 +120,43 @@ jobs:
               ;;
           esac
 
+      - name: Resolve ABI packages from npm dist-tag
+        id: abi
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.meta.outputs.environment }}" = "main" ]; then
+            TAG=latest
+          else
+            TAG=dev
+          fi
+          SPECS=""
+          VERSIONS="{}"
+          {
+            echo "## ABI packages (npm dist-tag \`$TAG\`)"
+            echo ""
+            echo "| Package | Version |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for pkg in \
+            @hashpower/oracle-abi \
+            @hashpower/collateral-abi \
+            @hashpower/futures-abi \
+            @hashpower/perps-abi
+          do
+            VER=$(npm view "$pkg@$TAG" version 2>/dev/null || true)
+            if [ -z "$VER" ]; then
+              echo "::error::$pkg has no '$TAG' dist-tag on npm"
+              exit 1
+            fi
+            SPECS="$SPECS $pkg@$VER"
+            VERSIONS=$(jq -c --arg k "$pkg" --arg v "$VER" '. + {($k): $v}' <<< "$VERSIONS")
+            echo "| $pkg | $VER |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "specs=${SPECS# }" >> "$GITHUB_OUTPUT"
+          echo "versions=$VERSIONS" >> "$GITHUB_OUTPUT"
+          echo "Resolved $TAG:${SPECS}"
+
       - uses: docker/setup-buildx-action@v4
 
       - uses: docker/login-action@v4
@@ -139,6 +184,8 @@ jobs:
           push: ${{ steps.meta.outputs.is_cicd_branch != 'true' }}
           load: ${{ steps.meta.outputs.is_cicd_branch == 'true' }}
           tags: ${{ steps.docker_tags.outputs.tags }}
+          build-args: |
+            ABI_SPECS=${{ steps.abi.outputs.specs }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
@@ -257,23 +304,41 @@ jobs:
     needs: [build, deploy]
     if: needs.build.outputs.is_cicd_branch != 'true' && needs.deploy.outputs.skipped != 'true'
     steps:
-      - name: Wait for /health
+      - name: Wait for /health and check ABI versions
         env:
           MCP_URL: ${{ needs.build.outputs.mcp_url }}
+          EXPECTED_ENV: ${{ needs.build.outputs.hashpower_env }}
+          EXPECTED_ABI: ${{ needs.build.outputs.abi_versions }}
+          ABI_TAG: ${{ needs.build.outputs.abi_tag }}
         run: |
           set -euo pipefail
           HEALTH="${MCP_URL%/mcp}/health"
           echo "Polling ${HEALTH}"
+          BODY=""
           for i in $(seq 1 30); do
-            if curl -fsS "$HEALTH" | grep -q '"ok":true'; then
-              echo "✅ healthy"
-              curl -fsS "$HEALTH"
-              exit 0
+            BODY=$(curl -fsS "$HEALTH" || true)
+            # A rollout leaves the previous task serving until the new one is
+            # healthy, so keep polling until the response carries the versions
+            # this run built, not just ok:true.
+            if [ -n "$BODY" ] \
+              && jq -e --argjson want "$EXPECTED_ABI" '.ok == true and .abi == $want' <<< "$BODY" >/dev/null; then
+              break
             fi
+            BODY=""
             sleep 10
           done
-          echo "::error::${HEALTH} did not become healthy"
-          exit 1
+          if [ -z "$BODY" ]; then
+            echo "::error::${HEALTH} did not report ok with @hashpower/*-abi@${ABI_TAG} = ${EXPECTED_ABI}"
+            curl -fsS "$HEALTH" || true
+            exit 1
+          fi
+          ACTUAL_ENV=$(jq -r '.env' <<< "$BODY")
+          if [ "$ACTUAL_ENV" != "$EXPECTED_ENV" ]; then
+            echo "::error::${HEALTH} reports env '${ACTUAL_ENV}', expected '${EXPECTED_ENV}'"
+            exit 1
+          fi
+          echo "✅ healthy on ${ACTUAL_ENV} with ABI ${ABI_TAG}: $(jq -c '.abi' <<< "$BODY")"
+          jq . <<< "$BODY"
 
   notify:
     name: 📢 Notify

@@ -100,6 +100,11 @@ async function handle(
       version: MCP_VERSION,
       env: config.env,
       network: deployments.environment.network,
+      // Installed @hashpower/*-abi versions. Deploy verify compares these to
+      // the dist-tag it resolved, so a stale image cannot pass as current.
+      abi: Object.fromEntries(
+        Object.entries(deployments.packages).map(([pkg, info]) => [pkg, info.version]),
+      ),
       docsUrl: config.docsUrl,
       transport: "http",
       mcp: "/mcp",
