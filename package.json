@@ -38,10 +38,10 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@hashpower/collateral-abi": "^3.0.0",
-    "@hashpower/futures-abi": "^3.0.0",
+    "@hashpower/collateral-abi": "^3.1.0",
+    "@hashpower/futures-abi": "^4.0.0",
     "@hashpower/oracle-abi": "^3.0.0",
-    "@hashpower/perps-abi": "^3.0.0",
+    "@hashpower/perps-abi": "^4.0.0",
     "@modelcontextprotocol/sdk": "^1.25.0",
     "viem": "^2.37.0",
     "zod": "^3.25.0"
