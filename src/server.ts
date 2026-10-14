@@ -142,7 +142,7 @@ export function createServer(
     {
       title: "Get recent trades",
       description:
-        "Public tape from the Trade subgraph entity the UI Recent Trades tab uses. Optional wallet filters to that account. Signed quantity: positive = buy, negative = sell.",
+        "Public tape from the Trade subgraph entity the UI Recent Trades tab uses. tag is backstop or liquidation, matching the UI. Optional wallet filters to that account. Signed quantity: positive = buy, negative = sell.",
       inputSchema: {
         venue: z.enum(["futures", "perps"]),
         first: z.number().int().min(1).max(100).default(25),

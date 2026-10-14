@@ -190,7 +190,7 @@ Starter prompts:
 | `get_market_snapshot` | First look at the market. Optional `maxLevels`, `trades`, `expirationAt` |
 | `get_hashprice` | `pair`: `usd` (trading index) or `btc` |
 | `get_orderbook` | Depth with **price + size + orderCount**. `venue` `perps` or `futures`; futures requires `expirationAt` |
-| `get_trades` | Public tape. Optional `wallet` filter. Each match appears twice (one row per side) |
+| `get_trades` | Public tape. `tag` is `backstop` or `liquidation`, same rule as the UI. Optional `wallet` filter. Each match appears twice (one row per side) |
 | `get_funding` | Perps funding strip. Optional wallet adds on-chain `getPendingFunding` |
 | `get_expirations` | Futures market selector + settlement overlay |
 | `get_market_stats` | Fees, ticks, volume, `getMarketPrice` |

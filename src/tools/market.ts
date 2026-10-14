@@ -22,8 +22,28 @@ interface TradeRow {
   timestamp: string;
   transactionHash: string;
   isLiquidation?: boolean;
+  isBackstopAssignment?: boolean;
   expirationAt?: string;
   user?: { id?: string; address?: string };
+}
+
+/** CollateralVault.BACKSTOP_ADDR. Same constant the trading UI uses to tag the tape. */
+export const BACKSTOP_ADDR = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+export type TradeTag = "backstop" | "liquidation";
+
+/**
+ * Tag a tape row the way the trading UI does.
+ * A backstop assignment, or any fill whose user is the backstop ledger, wins over liquidation.
+ */
+export function tradeTag(row: {
+  isBackstopAssignment?: boolean;
+  isLiquidation?: boolean;
+  userId?: string | null;
+}): TradeTag | null {
+  if (row.isBackstopAssignment || row.userId?.toLowerCase() === BACKSTOP_ADDR) return "backstop";
+  if (row.isLiquidation) return "liquidation";
+  return null;
 }
 
 interface FundingUpdateRow {
@@ -136,13 +156,13 @@ export async function loadTrades(
   wallet?: string,
 ) {
   const url = requireSubgraph(deployments.environment.subgraphs, venue);
-  const extra = venue === "futures" ? "expirationAt" : "isLiquidation";
+  const expirationAt = venue === "futures" ? "expirationAt" : "";
   const where = wallet ? `, where: { user: "${walletId(asAddress("wallet", wallet))}" }` : "";
   const { data, meta } = await graphql<{ trades: TradeRow[] }>(
     url,
     `{ ${META_BLOCK}
       trades(first: ${first}, orderBy: timestamp, orderDirection: desc${where}) {
-        id tradePrice tradeQuantity timestamp transactionHash ${extra}
+        id tradePrice tradeQuantity timestamp transactionHash isLiquidation isBackstopAssignment ${expirationAt}
         user { id }
       }
     }`,
@@ -151,18 +171,26 @@ export async function loadTrades(
     venue,
     wallet: wallet ? asAddress("wallet", wallet) : null,
     subgraphHead: meta.blockNumber,
-    trades: data.trades.map((row) => ({
-      id: row.id,
-      price: row.tradePrice,
-      quantity: row.tradeQuantity,
-      side: BigInt(row.tradeQuantity) >= 0n ? "buy" : "sell",
-      timestamp: row.timestamp,
-      transactionHash: row.transactionHash,
-      isLiquidation: row.isLiquidation ?? false,
-      expirationAt: row.expirationAt,
-      user: row.user?.id ?? null,
-    })),
-    note: "Same Trade entity the UI Recent Trades tab uses. Each row is one user's side of a match (a two-sided print appears twice). Signed quantity: positive = buy/long, negative = sell/short.",
+    trades: data.trades.map((row) => {
+      const user = row.user?.id ?? null;
+      return {
+        id: row.id,
+        price: row.tradePrice,
+        quantity: row.tradeQuantity,
+        side: BigInt(row.tradeQuantity) >= 0n ? "buy" : "sell",
+        timestamp: row.timestamp,
+        transactionHash: row.transactionHash,
+        isLiquidation: row.isLiquidation ?? false,
+        tag: tradeTag({
+          isBackstopAssignment: row.isBackstopAssignment,
+          isLiquidation: row.isLiquidation,
+          userId: user,
+        }),
+        expirationAt: row.expirationAt,
+        user,
+      };
+    }),
+    note: "Same Trade entity the UI Recent Trades tab uses. tag is backstop when the fill is a backstop assignment or the user is the backstop ledger, otherwise liquidation when isLiquidation is set. Each row is one user's side of a match (a two-sided print appears twice). Signed quantity: positive = buy/long, negative = sell/short.",
   };
 }
 
