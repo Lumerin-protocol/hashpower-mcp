@@ -44,7 +44,7 @@
     "@hashpower/perps-abi": "^3.0.0",
     "@modelcontextprotocol/sdk": "^1.25.0",
     "viem": "^2.37.0",
-    "zod": "^3.25.0"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.6",
