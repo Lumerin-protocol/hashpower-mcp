@@ -9,17 +9,17 @@ importers:
   .:
     dependencies:
       '@hashpower/collateral-abi':
-        specifier: ^3.0.0
-        version: 3.0.0
+        specifier: ^4.1.0
+        version: 4.1.0
       '@hashpower/futures-abi':
-        specifier: ^3.0.0
-        version: 3.0.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@hashpower/oracle-abi':
         specifier: ^3.0.0
         version: 3.0.0
       '@hashpower/perps-abi':
-        specifier: ^3.0.0
-        version: 3.0.0
+        specifier: ^5.0.0
+        version: 5.0.0
       '@modelcontextprotocol/sdk':
         specifier: ^1.25.0
         version: 1.30.0(zod@3.25.76)
@@ -257,20 +257,20 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@hashpower/collateral-abi@3.0.0':
-    resolution: {integrity: sha512-WWllxb+STZ/greTG5APpNj2wD9NMVAcu/qXxShBkfnLImyQlJn3tg/YIZmGip0sg56/K6TfhYEFGMKFVJz8+Tw==}
+  '@hashpower/collateral-abi@4.1.0':
+    resolution: {integrity: sha512-ynrai8HlBceT/a/z6Yyn6btQxd05mV0XgzvIEj4VnS7KTKSi9xJ7JmPDBvJ/wFIsdBEhRiprO2goNQpwmu+8yw==}
     engines: {node: '>=22'}
 
-  '@hashpower/futures-abi@3.0.0':
-    resolution: {integrity: sha512-KTvl2l2TiaNNxrf453EYudl1D4skUCzB8Z61akdRFN1ZHzDp4oH6hObsBBuAugpiVphCLyzRZHyipOcskfICzQ==}
+  '@hashpower/futures-abi@6.0.0':
+    resolution: {integrity: sha512-plbToLfRcT8OFVMeE/NhVWxM5x7CuI0ezV7oYEXVSdI2xLfNx6w9Xdr2xwD0B+T6bZE7I3X1JV6Q811dRAzuXQ==}
     engines: {node: '>=22'}
 
   '@hashpower/oracle-abi@3.0.0':
     resolution: {integrity: sha512-2qSKxIvjXi5pWRuXDbKn3jFHEllUyXwMjQciwzRgW1CCwp0iPqyoFSVU+QDaTE5t37yiJ5mWNIQdTOZYSEeDFQ==}
     engines: {node: '>=22'}
 
-  '@hashpower/perps-abi@3.0.0':
-    resolution: {integrity: sha512-R5TapNTJEV2tocj4iga7s2zrRnSD4Rdvd8WuQpRju1lweDbvQxNYjmT8BA6OQ++EV8Tv3HEuXNYDbujpzF3svw==}
+  '@hashpower/perps-abi@5.0.0':
+    resolution: {integrity: sha512-DEmVJnOINhJv88ul9whneWID/NTBrNKM7914FAWXRqskjTXk/ygYsevFEkHaZA2C4aX92Zc/6lXKmDjbYqdAVg==}
     engines: {node: '>=22'}
 
   '@hono/node-server@2.1.1':
@@ -854,13 +854,13 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hashpower/collateral-abi@3.0.0': {}
+  '@hashpower/collateral-abi@4.1.0': {}
 
-  '@hashpower/futures-abi@3.0.0': {}
+  '@hashpower/futures-abi@6.0.0': {}
 
   '@hashpower/oracle-abi@3.0.0': {}
 
-  '@hashpower/perps-abi@3.0.0': {}
+  '@hashpower/perps-abi@5.0.0': {}
 
   '@hono/node-server@2.1.1(hono@4.13.7)':
     dependencies:
